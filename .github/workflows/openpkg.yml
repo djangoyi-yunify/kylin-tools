@@ -1,0 +1,71 @@
+name: make openpkg for kylin
+on:
+  workflow_dispatch:
+    inputs:
+      opkgv:
+        description: 'openpkg version'
+        default: '4.8.31'
+        required: false
+        type: string
+      opkgt:
+        description: 'openpkg version time'
+        default: '20231015'
+        required: false
+        type: string
+      osv:
+        description: 'kylin version'
+        default: '10sp3'
+        required: false
+        type: string
+
+jobs:
+  compile:
+    strategy:
+      matrix:
+        platform: ["amd64", "arm64"]
+        # platform: ["amd64"]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+    - name: Prepare redis src
+      run: |
+        curl -L -o openpkg.src.sh http://download.openpkg.org/framework/release/source/openpkg-${{ inputs.opkgv }}-${{ inputs.opkgt }}.src.sh
+      working-directory: /tmp
+    - name: make openpkg
+      run: |
+        docker run --platform linux/${{ matrix.platform }} --rm -v /tmp:/workspace -w /workspace djangoyi/kylin-server:${{ inputs.osv }} /bin/sh /workspace/openpkg.src.sh --prefix=/opt/openpkg --tag=openpkg
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: kylin-${{ matrix.platform }}
+        path: /tmp/openpkg-${{ inputs.opkgv }}-${{ inputs.opkgt }}.${{ matrix.platform }}-*-openpkg.sh
+
+  release:
+    runs-on: ubuntu-latest
+    needs: compile
+    permissions:
+      contents: write
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    # - name: Remove release
+    #   uses: liudonghua123/delete-release-action@v1
+    #   with:
+    #     release_name: redis-${{ inputs.redisv }}_ubuntu-${{ inputs.osv }}
+    #     suppress_errors: true
+    # - name: Remove tag
+    #   run: |
+    #     git tag -d mongo-${{ needs.export.outputs.mongo }}_ubuntu-${{ needs.export.outputs.ubuntu }} || :
+    #     git push origin --delete mongo-${{ needs.export.outputs.mongo }}_ubuntu-${{ needs.export.outputs.ubuntu }} || :
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        pattern: kylin-*
+        path: release
+    - name: Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          release/kylin-*/*
+        tag_name: openpkg-${{ inputs.opkgv }}_kylin-${{ inputs.osv }}
