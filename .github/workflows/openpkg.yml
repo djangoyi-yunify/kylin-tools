@@ -28,7 +28,7 @@ jobs:
     steps:
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
-    - name: Prepare redis src
+    - name: Prepare openpkg src
       run: |
         curl -L -o openpkg.src.sh http://download.openpkg.org/framework/release/source/openpkg-${{ inputs.opkgv }}-${{ inputs.opkgt }}.src.sh
       working-directory: /tmp
