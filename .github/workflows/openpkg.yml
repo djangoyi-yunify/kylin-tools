@@ -34,7 +34,7 @@ jobs:
       working-directory: /tmp
     - name: make openpkg
       run: |
-        docker run --platform linux/${{ matrix.platform }} --rm -v /tmp:/workspace -w /workspace djangoyi/kylin-server:${{ inputs.osv }} dnf install make -y && /bin/sh /workspace/openpkg.src.sh --prefix=/opt/openpkg --tag=openpkg
+        docker run --platform linux/${{ matrix.platform }} --rm -v /tmp:/workspace -w /workspace djangoyi/kylin-server:${{ inputs.osv }} bash -c "dnf install make -y && /bin/sh /workspace/openpkg.src.sh --prefix=/opt/openpkg --tag=openpkg"
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
