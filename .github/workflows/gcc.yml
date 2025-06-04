@@ -31,7 +31,7 @@ jobs:
     - name: make gcc
       run: |
         mkdir gcc-build gcc-output
-        docker run --platform linux/${{ matrix.platform }} --rm -v /tmp:/workspace -w /workspace djangoyi/gcc-compiler:${{ inputs.osv }} bash -c "cd /workspace/gcc-build && ../gcc-${{ inputs.gccv }}/configure --disable-multilib && make && DESTDIR=/workspace/gcc-output make install"
+        docker run --platform linux/${{ matrix.platform }} --rm -v /tmp:/workspace -w /workspace djangoyi/gcc-compiler:kylin-${{ inputs.osv }} bash -c "cd /workspace/gcc-build && ../gcc-${{ inputs.gccv }}/configure --disable-multilib && make && DESTDIR=/workspace/gcc-output make install"
       working-directory: /tmp
     - name: pack binaries
       run: |
