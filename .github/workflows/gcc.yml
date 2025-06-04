@@ -1,15 +1,10 @@
-name: make openpkg for kylin
+name: make gcc for kylin
 on:
   workflow_dispatch:
     inputs:
-      opkgv:
-        description: 'openpkg version'
-        default: '4.8.31'
-        required: false
-        type: string
-      opkgt:
-        description: 'openpkg version time'
-        default: '20231015'
+      gccv:
+        description: 'gcc version'
+        default: '11.5.0'
         required: false
         type: string
       osv:
@@ -28,18 +23,24 @@ jobs:
     steps:
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
-    - name: Prepare openpkg src
+    - name: Prepare gcc src
       run: |
-        curl -L -o openpkg.src.sh http://download.openpkg.org/framework/release/source/openpkg-${{ inputs.opkgv }}-${{ inputs.opkgt }}.src.sh
+        curl -L -O https://mirrors.ustc.edu.cn/gnu/gcc/gcc-${{ inputs.gccv }}/gcc-${{ inputs.gccv }}.tar.gz
+        tar -xzf gcc-${{ inputs.gccv }}.tar.gz
       working-directory: /tmp
-    - name: make openpkg
+    - name: make gcc
       run: |
-        docker run --platform linux/${{ matrix.platform }} --rm -v /tmp:/workspace -w /workspace djangoyi/kylin-server:${{ inputs.osv }} bash -c "dnf install make gcc -y && /bin/sh /workspace/openpkg.src.sh --prefix=/opt/openpkg --tag=openpkg"
+        mkdir gcc-build gcc-output
+        docker run --platform linux/${{ matrix.platform }} --rm -v /tmp:/workspace -w /workspace djangoyi/gcc-compiler:${{ inputs.osv }} bash -c "cd /workspace/gcc-build && ../gcc-${{ inputs.gccv }}/configure --disable-multilib && make && DESTDIR=/workspace/gcc-output make install"
+      working-directory: /tmp
+    - name: pack binaries
+      run: |
+        tar -czf /tmp/gcc-${{ inputs.gccv }}-${{ matrix.platform }}.tgz /tmp/gcc-output/*
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: kylin-${{ matrix.platform }}
-        path: /tmp/openpkg-${{ inputs.opkgv }}-${{ inputs.opkgt }}.${{ matrix.platform }}-*-openpkg.sh
+        path: /tmp/gcc-${{ inputs.gccv }}-${{ matrix.platform }}.tgz
 
   release:
     runs-on: ubuntu-latest
@@ -68,4 +69,4 @@ jobs:
       with:
         files: |
           release/kylin-*/*
-        tag_name: openpkg-${{ inputs.opkgv }}_kylin-${{ inputs.osv }}
+        tag_name: gcc-${{ inputs.gccv }}_kylin-${{ inputs.osv }}
