@@ -1,0 +1,10 @@
+ARG OSV
+ARG NAMESPACE
+
+FROM ${NAMESPACE}/kylin-server:${OSV}
+
+CMD ["bash"]
+RUN dnf install gcc gcc-c++ make gmp-devel mpfr-devel libmpc-devel -y \
+    && mkdir /workspace
+
+VOLUME [ "/workspace" ]
