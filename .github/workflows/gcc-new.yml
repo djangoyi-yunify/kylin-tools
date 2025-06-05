@@ -1,0 +1,96 @@
+name: make gcc for kylin(using github native arm runner)
+on:
+  workflow_dispatch:
+    inputs:
+      gccv:
+        description: 'gcc version'
+        default: '11.5.0'
+        required: false
+        type: string
+      osv:
+        description: 'kylin version'
+        default: '10sp3'
+        required: false
+        type: string
+
+jobs:
+  compile-amd64:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: setup platform
+      id: platform
+      run: |
+        echo "PLATFORM=amd64" >> $GITHUB_OUTPUT
+    - name: Prepare gcc src
+      run: |
+        curl -L -O https://mirrors.ustc.edu.cn/gnu/gcc/gcc-${{ inputs.gccv }}/gcc-${{ inputs.gccv }}.tar.gz
+        tar -xzf gcc-${{ inputs.gccv }}.tar.gz
+      working-directory: /tmp
+    - name: make gcc
+      run: |
+        mkdir gcc-build gcc-output
+        docker run --rm -v /tmp:/workspace -w /workspace djangoyi/gcc-compiler:kylin-${{ inputs.osv }} bash -c "cd /workspace/gcc-build && ../gcc-${{ inputs.gccv }}/configure --disable-multilib && make && DESTDIR=/workspace/gcc-output make install"
+      working-directory: /tmp
+    - name: pack binaries
+      run: |
+        tar -czf /tmp/gcc-${{ inputs.gccv }}-${{ steps.platform.outputs.PLATFORM }}.tgz /tmp/gcc-output/*
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: kylin-${{ steps.platform.outputs.PLATFORM }}
+        path: /tmp/gcc-${{ inputs.gccv }}-${{ steps.platform.outputs.PLATFORM }}.tgz
+
+  compile-arm64:
+    runs-on: ubuntu-22.04-arm
+    steps:
+    - name: setup platform
+      id: platform
+      run: |
+        echo "PLATFORM=arm64" >> $GITHUB_OUTPUT
+    - name: Prepare gcc src
+      run: |
+        curl -L -O https://mirrors.ustc.edu.cn/gnu/gcc/gcc-${{ inputs.gccv }}/gcc-${{ inputs.gccv }}.tar.gz
+        tar -xzf gcc-${{ inputs.gccv }}.tar.gz
+      working-directory: /tmp
+    - name: make gcc
+      run: |
+        mkdir gcc-build gcc-output
+        docker run --rm -v /tmp:/workspace -w /workspace djangoyi/gcc-compiler:kylin-${{ inputs.osv }} bash -c "cd /workspace/gcc-build && ../gcc-${{ inputs.gccv }}/configure --disable-multilib && make && DESTDIR=/workspace/gcc-output make install"
+      working-directory: /tmp
+    - name: pack binaries
+      run: |
+        tar -czf /tmp/gcc-${{ inputs.gccv }}-${{ steps.platform.outputs.PLATFORM }}.tgz /tmp/gcc-output/*
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: kylin-${{ steps.platform.outputs.PLATFORM }}
+        path: /tmp/gcc-${{ inputs.gccv }}-${{ steps.platform.outputs.PLATFORM }}.tgz
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [compile-amd64, compile-amd64]
+    permissions:
+      contents: write
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    # - name: Remove release
+    #   uses: liudonghua123/delete-release-action@v1
+    #   with:
+    #     release_name: redis-${{ inputs.redisv }}_ubuntu-${{ inputs.osv }}
+    #     suppress_errors: true
+    # - name: Remove tag
+    #   run: |
+    #     git tag -d mongo-${{ needs.export.outputs.mongo }}_ubuntu-${{ needs.export.outputs.ubuntu }} || :
+    #     git push origin --delete mongo-${{ needs.export.outputs.mongo }}_ubuntu-${{ needs.export.outputs.ubuntu }} || :
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        pattern: kylin-*
+        path: release
+    - name: Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          release/kylin-*/*
+        tag_name: gcc-${{ inputs.gccv }}_kylin-${{ inputs.osv }}
