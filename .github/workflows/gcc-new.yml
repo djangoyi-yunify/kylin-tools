@@ -68,7 +68,7 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
-    needs: [compile-amd64, compile-amd64]
+    needs: [compile-amd64, compile-arm64]
     permissions:
       contents: write
     steps:
